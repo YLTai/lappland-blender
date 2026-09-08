@@ -1,7 +1,5 @@
 """Original Lappland / semantic part reconstruction / Blender 4.2.1.
-
-The active design has no image-pixel control points. It uses a half-annulus,
-its diameter beam, concentric relief, a swept blunt blade and an oval grip.
+The active geometry is defined by dimensions and constraints, not image pixels.
 """
 import bpy
 import sys
@@ -14,17 +12,18 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT))
 import lappland_geometry as G
-from semantic_geometry import analytic_guard,blade_sections,add_circle_proof
+from semantic_geometry import blade_sections,add_circle_proof
+from continuous_guard import continuous_guard
 
 CONFIG={
-    'revision':'r5-semantic-half-circle-constraint',
+    'revision':'r6-continuous-half-circle-final',
     'strict_validation':True,
     'remove_subvoxel_islands':True,
     'guard_outer_radius_mm':175.0,
     'guard_radial_width_mm':25.0,
     'guard_center_xz_mm':[-14.0,-185.0],
     'diameter_to_blade_angle_deg':30.0,
-    'diameter_beam_width_mm':18.0,
+    'diameter_beam_width_mm':24.0,
     'guard_core_depth_mm':12.0,
     'guard_rail_lift_mm':3.0,
     'shoulder_arc_deg':65.0,
@@ -79,16 +78,19 @@ def finish_and_record():
     manifest.update({
         'source_commit':os.environ.get('GITHUB_SHA','local'),
         'workflow_run_id':os.environ.get('GITHUB_RUN_ID','local'),
-        'guard_geometry':'concentric 180-degree annulus + half-plane diameter beam',
+        'guard_geometry':'one closed D-frame solid bounded by concentric circular arcs and a diameter beam',
         'guard_outer_diameter_mm':2*CONFIG['guard_outer_radius_mm'],
         'guard_inner_diameter_mm':2*(CONFIG['guard_outer_radius_mm']-CONFIG['guard_radial_width_mm']),
+        'diameter_beam_width_mm':CONFIG['diameter_beam_width_mm'],
+        'guard_radial_width_mm':CONFIG['guard_radial_width_mm'],
         'guard_rail_face_to_face_mm':CONFIG['guard_actual_rail_depth_mm'],
         'guard_shoulder_face_to_face_mm':CONFIG['guard_actual_shoulder_depth_mm'],
+        'same_layer_guard_joints':CONFIG['same_layer_guard_joints'],
         'grip_pattern':CONFIG['grip_pattern'],
         'circle_pair_validation_passed':proof['passed'],
         'active_model_contains_pixel_trace':False,
         'third_party_mesh_imported':False,
-        'pair_relation':'Congruent swords; their guard frames are complementary half-circles in the supplied proof pose.'
+        'pair_relation':'Congruent swords; their actual guard frames are complementary half-circles in the proof pose.'
     })
     manifest['reference_limitations'].append(
         'Circle closure is a user-specified geometric constraint. The proof shows only the guard frames, '
@@ -96,12 +98,13 @@ def finish_and_record():
     (output/'model_manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
     old=output/'reference_profile.json'
     if old.exists():
-        old.rename(output/'analytic_guard_profile.json')
+        old.replace(output/'analytic_guard_profile.json')
     sources=output/'source'
-    for name in ('semantic_geometry.py','reference_probe.py','README.md','REFERENCE_NOTES.md','ITERATIONS.md'):
+    for name in ('semantic_geometry.py','continuous_guard.py','reference_probe.py',
+                 'README.md','REFERENCE_NOTES.md','ITERATIONS.md'):
         if (ROOT/name).exists():
             shutil.copy2(ROOT/name,sources/name)
-    bpy.context.scene['guard_design']='two 180 degree half annuli / common radius / non-overlapping half-plane beams'
+    bpy.context.scene['guard_design']='two 180 degree half circles / common radius / continuous D-contour solids'
     bpy.ops.object.select_all(action='DESELECT')
     bpy.ops.wm.save_as_mainfile(filepath=str(output/'lappland_original_pair.blend'))
     print('LAPPLAND_SEMANTIC_VALIDATION '+json.dumps(manifest))
@@ -109,7 +112,7 @@ def finish_and_record():
 
 if __name__=='__main__':
     try:
-        G.guard=analytic_guard
+        G.guard=continuous_guard
         G.build(CONFIG)
         finish_and_record()
         from reference_probe import probe
