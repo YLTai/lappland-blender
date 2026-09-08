@@ -1,39 +1,17 @@
-# Clean-room build / download / inspect / revise record
+# 实际构建与检查记录
 
-No earlier implementation or third-party 3D asset was read or restored. The starting model.py and render.py were empty. All twelve user images are inventoried in REFERENCE_NOTES.md.
+## R1–R4：被方法纠正取代的前期版本
 
-## R1 — initial build, failed validation
+从净室空白文件开始。R1 的 Actions 34220927713 因 STL 连通分量检查失败，没有成品。R1.1（34221348893，artifact 10054104949）用于诊断和首轮视图检查；R2（34222880433，artifact 10054752382）修正剑根、主剑身、护手宽度及交叉柄纹；R3（34224349165，artifact 10055262883）修正肩槽、圆鼻和 45° 相机；R4（34225422895，artifact 10055796820）修正浅色柄与深色接缝。
 
-Commit e1c3d5e1202deb23836d0c606517944d204271e1; Actions 34220927713. Built blade, D-frame/chord, shoulder, grip, pair and exports. Strict union validation found 17 components and zero nonmanifold edges. No usable artifact was produced. This is recorded as a failed build, not a completed deliverable.
+这些版本虽进行了渲染返修，但使用图像轮廓拟合护手的方法不满足用户后来指出的部件几何关系，不能作为最终验收依据。像素重合度不是三维设计正确性的证明。
 
-## R1.1 — first downloaded artifact
+## R5：依据用户纠正，重建几何规则
 
-Commit 34ff670bf37e5c7cf506f7c187afdcd4b8cdb39e; Actions 34221348893; artifact 10054104949 (87.7 MB). Downloaded, extracted and inspected all fourteen views, full-size guard/grip details, and the actual Blender mask aligned with the concept sheet. Diagnostic metadata explicitly said validation_passed=false.
+完全替换活动护手构建逻辑：从两条独立描线改为共享圆心、外半径 175 mm / 内半径 150 mm 的同心 180° 半圆环，加自身半平面内的 18 mm 宽直径梁。所有上肩构件保持在同一外圆内，避免仅主体配圆、附件却超出圆的错误。前后同心槽层和上肩槽是真实厚度，不用材质假造。
 
-The 17 components were one real sword (361,952 vertices) plus sixteen numerical islands at the blade/root overlap. The largest island extent was 0.754 mm; the others were below 0.22 mm. Added narrowly bounded subvoxel handling, not blanket deletion of real parts.
+剑身也改为宽剑根、窄主剑身、少量弯曲系数和圆鼻的参数化规则；截面采样不再来自像素描边。保留钝边、圆鼻与浅柄深色交叉缝。
 
-Largest errors: guard chord/perimeter too thin and inset, blade centreline too far right and distal blade too wide, absent broad stepped ricasso, grip spirals reading as a zigzag. Eleven checked lower-blade scanlines gave mean absolute centre deviation 5.48 mm (maximum 13.46 mm), mean width difference 5.36 mm. These values use the chosen image-to-prop scale; they are not official physical tolerances.
+增加由实际护手网格组成的配圆 GLB、BLEND 第二场景及正面/45°/接缝三张检查图。检查真实评估后网格是否超出 R175、是否侵入另一半平面，以及两端是否重合；不虚构两把完整剑的机械锁合。
 
-## R2 — official silhouette/proportion correction
-
-Commit fe995ae718520531d2baa2f846a994a8d7866c32; Actions 34222880433; downloaded artifact 10054752382 (89.0 MB). Inspected all fourteen views, enlarged guard/tip renders and the reference overlay. Independently reloaded A/B STL and GLB.
-
-Retraced outer guard endpoints to (540,240)/(549,511), widened the chord/perimeter and independently corrected the opening. Replaced blade stations from the concept trace, including a roughly 50 mm root stepping into the roughly 29–32 mm main blade. Added an inferred 3 mm root-thickness increase. Opposed wrap phase was corrected to create crossings.
-
-Strict and independent validation passed: one component per sword, zero nonmanifold edges, consistent winding, positive volume, watertight STLs, identical A/B masters, metre GLB without external dependencies. No numerical islands needed removal. The same eleven scanlines reduced to 1.28 mm absolute centre deviation (one source pixel), with zero width difference at that raster sampling. Remaining problems were a flat shoulder cap, insufficient light grip coverage, a sheared/pinched-looking nose cap, and oblique cameras that were not literally 45 degrees.
-
-## R3 — shoulder layers and genuinely rounded nose
-
-Commit b5db1d404cce90b049d68f061f310c60db9354f8; Actions 34224349165; downloaded artifact 10055262883 (90.5 MB). Inspected the complete fourteen-view contact sheet, reference overlay and grip/tip details; independently revalidated the exported files.
-
-Preserved the converged blade and guard outline. Added a real 1.8 mm shoulder recess between raised lips, rotated the final nose sections into the local normal plane for a nominal 4 mm rounded cap, and changed pair/guard/tip cameras to actual 45-degree azimuths. The broader 7 mm light wrap improved coverage but still resembled generic white katana wrapping over dark diamonds, rather than the concept's predominantly light grip with dark intersecting seam lines.
-
-Validation again passed with no islands removed: one component, zero nonmanifold edges, 797,948 triangles per sword. Dimensions were 1066.62 x 286.76 x 31.60 mm (length x width x depth). The eleven blade scanlines gave mean centre deviation 1.17 mm, maximum 1.28 mm, mean width difference 0.23 mm. The deliberately rounded last few millimetres are a safety adaptation, not an attempt to copy a sharp point.
-
-## R4 — final original-grip correction
-
-The enlarged concept grip was checked against R3's actual close-up. Changed the pattern to an ivory oval body with dark crossed seams, seam width 2.2 mm and pitch 22 mm, and a dark rounded pommel. This does not borrow a different character/outfit design. The seam bands retain shallow relief as an explicit reconstruction assumption.
-
-Geometry remains generated and validated before material assignment. model.py now performs a named, checked grip-material finishing pass, re-exports GLB and BLEND, and records the actual GitHub source commit/run in the manifest. No vertices change in that finishing pass, so STL and editable geometry remain consistent. The converged blade, guard, recessed shoulder, blunt edge and rounded nose are unchanged. All fourteen views are regenerated, and render.py writes SHA-256 checksums for the actual final model files and PNGs.
-
-Build-time validation is distinct from the subsequent download inspection. The final downloaded artifact and independent checks are the acceptance evidence; a successful Actions status alone is not sufficient.
+R5 将通过现有 Actions 生成和下载检查。构建成功与数值断言不是最终视觉验收，后续须查看真实 Artifact 后再决定修正。
