@@ -1,7 +1,4 @@
-"""Clean-room geometry for the original five-star Lappland cosplay swords.
-All dimensions supplied to builders are millimetres. Scene coordinates are metres.
-The two swords share one design; no alter/skin geometry is used.
-"""
+"""Clean-room original Lappland cosplay geometry; all builder arguments are mm."""
 import bpy
 import bmesh
 import math
@@ -68,8 +65,7 @@ def strip(name, outside, inside, depth, y=0.0, mat='frame', bevel=0.5):
     faces = [(3, 2, 1, 0)]
     for i in range(len(outside)-1):
         for j in range(4):
-            a = 4*i+j
-            b = 4*i+(j+1)%4
+            a, b = 4*i+j, 4*i+(j+1)%4
             faces.append((a, b, b+4, a+4))
     k = 4*(len(outside)-1)
     faces.append(tuple(k+j for j in range(4)))
@@ -79,11 +75,11 @@ def strip(name, outside, inside, depth, y=0.0, mat='frame', bevel=0.5):
 def box(name, center, size, mat='frame', bevel=0.6):
     x, y, z = center
     a, b, c = (v/2 for v in size)
-    v = [(x+sx*a,y+sy*b,z+sz*c) for sx,sy,sz in
-         [(-1,-1,-1),(1,-1,-1),(1,1,-1),(-1,1,-1),
-          (-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1)]]
-    f = [(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]
-    return mesh(name, v, f, (mat,), bevel=bevel)
+    verts = [(x+sx*a,y+sy*b,z+sz*c) for sx,sy,sz in
+             [(-1,-1,-1),(1,-1,-1),(1,1,-1),(-1,1,-1),
+              (-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1)]]
+    faces = [(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]
+    return mesh(name, verts, faces, (mat,), bevel=bevel)
 
 
 def cubic(cp, t):
@@ -117,53 +113,46 @@ def catmull(points, steps=16):
 
 
 def blade(cfg):
-    stations = cfg['blade_stations_mm']
-    pts = catmull(stations, 18)
-    verts, faces, mats = [], [], []
-    normals, tangents = [], []
+    pts = catmull(cfg['blade_stations_mm'], 18)
+    verts, faces, mats, tangents = [], [], [], []
+    face_mats = [1,0,2,2,2,0,1,1]
     for i, (x,z,w) in enumerate(pts):
-        a = pts[max(0,i-1)]
-        b = pts[min(len(pts)-1,i+1)]
+        a, b = pts[max(0,i-1)], pts[min(len(pts)-1,i+1)]
         tangent = Vector((b[0]-a[0], b[1]-a[1])).normalized()
         normal = Vector((-tangent.y, tangent.x))
         tangents.append(tangent)
-        normals.append(normal)
         progress = i/(len(pts)-1)
         thickness = cfg['blade_thickness_mm']*(1-0.32*progress**3)
-        edge = cfg['blunt_edge_mm']
-        spine = cfg['spine_land_mm']
+        edge, spine = cfg['blunt_edge_mm'], cfg['spine_land_mm']
         profile = [(-0.5,-edge/2),(-0.25,-thickness/2),(0.40,-thickness/2),
                    (0.5,-spine/2),(0.5,spine/2),(0.40,thickness/2),
                    (-0.25,thickness/2),(-0.5,edge/2)]
         w = max(2*cfg['tip_radius_mm'], w)
         for u,y in profile:
             verts.append((x+normal.x*u*w, y, z+normal.y*u*w))
-    face_mats = [1,0,2,2,2,0,1,1]
     faces.append(tuple(reversed(range(8))))
     mats.append(2)
     for i in range(len(pts)-1):
         for j in range(8):
             faces.append((i*8+j,i*8+(j+1)%8,(i+1)*8+(j+1)%8,(i+1)*8+j))
             mats.append(face_mats[j])
-    # A half-ellipsoidal, genuinely rounded nose instead of a zero-radius point.
     center = Vector((pts[-1][0], pts[-1][1]))
-    n, t = normals[-1], tangents[-1]
+    tangent = tangents[-1]
     last_ring = verts[-8:]
     ring_start = len(verts)-8
     for k in range(1,9):
         angle = (math.pi/2)*k/9
-        c = center+t*cfg['tip_radius_mm']*math.sin(angle)
+        c = center+tangent*cfg['tip_radius_mm']*math.sin(angle)
         shrink = math.cos(angle)
         new_start = len(verts)
         for vx,vy,vz in last_ring:
             delta = Vector((vx,vz))-center
             verts.append((c.x+delta.x*shrink,vy*shrink,c.y+delta.y*shrink))
         for j in range(8):
-            faces.append((ring_start+j,ring_start+(j+1)%8,
-                          new_start+(j+1)%8,new_start+j))
+            faces.append((ring_start+j,ring_start+(j+1)%8,new_start+(j+1)%8,new_start+j))
             mats.append(face_mats[j])
         ring_start = new_start
-    tip = center+t*cfg['tip_radius_mm']
+    tip = center+tangent*cfg['tip_radius_mm']
     tip_index = len(verts)
     verts.append((tip.x,0,tip.y))
     for j in range(8):
@@ -181,13 +170,11 @@ def guard(cfg):
                 continue
             raw_o.append(cubic(outer,j/64))
             raw_i.append(cubic(inner,j/64))
-    out = [trace_to_mm(p,cfg) for p in raw_o]
-    ins = [trace_to_mm(p,cfg) for p in raw_i]
+    out, ins = [trace_to_mm(p,cfg) for p in raw_o], [trace_to_mm(p,cfg) for p in raw_i]
     depth, lift = cfg['guard_core_depth_mm'], cfg['guard_rail_lift_mm']
     strip('Guard | continuous D arc core',out,ins,depth,mat='frame',bevel=0.65)
     chord_o, chord_i = [out[0],out[-1]], [ins[0],ins[-1]]
     strip('Guard | skewed straight chord',chord_o,chord_i,depth,mat='frame',bevel=0.65)
-    # Raised inner and outer lips leave a real recessed channel on both faces.
     for side in (-1,1):
         y = side*(depth/2+lift/2-0.25)
         for label,lo,hi,mat in [('outer lip',0.02,0.24,'silver'),('inner lip',0.78,0.98,'rim')]:
@@ -213,8 +200,7 @@ def guard(cfg):
 
 def pin(name,center,radius,depth,mat):
     x,y,z = center
-    n=20
-    verts=[]
+    n, verts = 20, []
     for yy in (y-depth/2,y+depth/2):
         for j in range(n):
             a=2*math.pi*j/n
@@ -225,8 +211,7 @@ def pin(name,center,radius,depth,mat):
 
 
 def oval_loft(name,sections,mat,bevel=0.4):
-    verts=[]
-    n=48
+    n, verts = 48, []
     for z,rx,ry in sections:
         for j in range(n):
             a=2*math.pi*j/n
@@ -250,10 +235,8 @@ def grip(cfg):
         for i in range(count+1):
             z=z0+(z1-z0)*i/count
             angle=direction*2*math.pi*(z-z0)/pitch
-            taper=(z/end)
-            rx=14.0-2.7*taper*taper
-            ry=11.1-1.7*taper*taper
-            # Alternating shallow lift at crossings; ribbons are closed solids.
+            taper=z/end
+            rx, ry = 14.0-2.7*taper*taper, 11.1-1.7*taper*taper
             lift=0.7+0.22*direction*math.cos(2*angle)
             for dz,dr in [(-width/2,-0.45),(width/2,-0.45),(width/2,lift),(-width/2,lift)]:
                 verts.append(((rx+dr)*math.cos(angle),(ry+dr)*math.sin(angle),z+dz))
@@ -265,7 +248,6 @@ def grip(cfg):
         mesh(f'Grip | ivory crossed ribbon {direction}',verts,faces,('wrap',),bevel=0.16)
     oval_loft('Grip | root ferrule',[(-4,15.1,12.4),(8,15.1,12.4),(10,14,11.5)],'spine',0.7)
     oval_loft('Grip | rounded pommel cap',[(end-3,12,10),(end+5,12,10),(end+8,9.5,8)],'silver',0.8)
-    # A small closed, non-functional lanyard lug. The long concept-art carry strap is omitted.
     verts=[]
     rings,sides=48,10
     for j in range(rings):
@@ -276,13 +258,30 @@ def grip(cfg):
             b=2*math.pi*k/sides
             v=center+normal*(1.6*math.cos(b))+Vector((0,1.6*math.sin(b),0))
             verts.append(tuple(v))
-    faces=[(j*sides+k,j*sides+(k+1)%sides,
-            ((j+1)%rings)*sides+(k+1)%sides,((j+1)%rings)*sides+k)
+    faces=[(j*sides+k,j*sides+(k+1)%sides,((j+1)%rings)*sides+(k+1)%sides,((j+1)%rings)*sides+k)
            for j in range(rings) for k in range(sides)]
     mesh('Pommel | closed lanyard lug',verts,faces,('spine',))
     box('Blade root | rounded collar',(2,0,-9),(30,27,25),'spine',1.3)
     for side in (-1,1):
         box(f'Blade root | shoulder pad {side}',(3,side*14,-13),(23,3.6,19),'silver',0.8)
+
+
+def components_of(bm):
+    unseen = set(bm.verts)
+    groups = []
+    while unseen:
+        seed = unseen.pop()
+        group, todo = {seed}, [seed]
+        while todo:
+            current = todo.pop()
+            for edge in current.link_edges:
+                other = edge.other_vert(current)
+                if other in unseen:
+                    unseen.remove(other)
+                    group.add(other)
+                    todo.append(other)
+        groups.append(group)
+    return sorted(groups,key=len,reverse=True)
 
 
 def solid_union(cfg, output):
@@ -300,7 +299,7 @@ def solid_union(cfg, output):
     bpy.context.view_layer.objects.active=temp[0]
     bpy.ops.object.join()
     ob=bpy.context.object
-    ob.name='EXPORT | single watertight prop master'
+    ob.name='EXPORT | prop master union'
     mod=ob.modifiers.new('Closed prop union at specified tolerance','REMESH')
     mod.mode='VOXEL'
     mod.voxel_size=cfg['stl_voxel_mm']*S
@@ -309,26 +308,28 @@ def solid_union(cfg, output):
     bm=bmesh.new()
     bm.from_mesh(ob.data)
     bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces))
-    bm.verts.ensure_lookup_table()
+    groups=components_of(bm)
+    component_report=[]
+    for group in groups:
+        bounds=[[min(v.co[i] for v in group)*1000,max(v.co[i] for v in group)*1000] for i in range(3)]
+        component_report.append({'vertices':len(group),'bounds_xyz_mm':bounds})
+    print('UNION_COMPONENT_REPORT '+json.dumps(component_report))
+    (output/'union_diagnostics.json').write_text(json.dumps(component_report,indent=2),encoding='utf-8')
+    removed=0
+    if cfg.get('remove_subvoxel_islands',False):
+        for group in groups[1:]:
+            extent=max(max(v.co[i] for v in group)-min(v.co[i] for v in group) for i in range(3))
+            if extent <= cfg['stl_voxel_mm']*S*2.1:
+                bmesh.ops.delete(bm,geom=list(group),context='VERTS')
+                removed+=1
+        groups=components_of(bm)
     nonmanifold=sum(not e.is_manifold for e in bm.edges)
-    unseen=set(bm.verts)
-    components=0
-    while unseen:
-        components+=1
-        seed=unseen.pop()
-        todo=[seed]
-        while todo:
-            current=todo.pop()
-            for edge in current.link_edges:
-                other=edge.other_vert(current)
-                if other in unseen:
-                    unseen.remove(other)
-                    todo.append(other)
     volume=abs(bm.calc_volume(signed=True))*1e9
     bm.to_mesh(ob.data)
     bm.free()
-    if nonmanifold or components != 1:
-        raise RuntimeError(f'STL union failed: {nonmanifold} nonmanifold edges; {components} components')
+    valid=nonmanifold==0 and len(groups)==1
+    if not valid and cfg.get('strict_validation',True):
+        raise RuntimeError(f'STL union failed: {nonmanifold} nonmanifold edges; {len(groups)} components')
     ob.data.calc_loop_triangles()
     triangles=list(ob.data.loop_triangles)
     def write_stl(path,offsets):
@@ -347,10 +348,10 @@ def solid_union(cfg, output):
     write_stl(output/'lappland_pair_mm.stl',[-220,220])
     coords=[v.co*1000 for v in ob.data.vertices]
     bounds=[[min(v[i] for v in coords),max(v[i] for v in coords)] for i in range(3)]
-    stats={'units':'mm','nonmanifold_edges':nonmanifold,'connected_components_per_sword':components,
+    stats={'units':'mm','validation_passed':valid,'nonmanifold_edges':nonmanifold,
+           'connected_components_per_sword':len(groups),'removed_subvoxel_islands':removed,
            'triangles_per_sword':len(triangles),'volume_mm3':volume,'bounds_xyz_mm':bounds,
-           'dimensions_xyz_mm':[b-a for a,b in bounds],
-           'stl_union_voxel_mm':cfg['stl_voxel_mm'],
+           'dimensions_xyz_mm':[b-a for a,b in bounds],'stl_union_voxel_mm':cfg['stl_voxel_mm'],
            'pair_relation':'Two copies of one master, not a newly mirrored or short-sword design.'}
     hidden=bpy.data.collections.new('EXPORT_SOLIDS | hidden / millimetre STL source')
     bpy.context.scene.collection.children.link(hidden)
@@ -368,23 +369,17 @@ def build(cfg):
     ASSETS.clear()
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
-    for col in list(bpy.data.collections):
-        if col.name != 'Collection' and col.users == 0:
-            bpy.data.collections.remove(col)
     scene=bpy.context.scene
     scene.unit_settings.system='METRIC'
     scene.unit_settings.length_unit='MILLIMETERS'
     scene.unit_settings.scale_length=1.0
     scene['design_scope']='Original five-star Lappland / E2 / The Young Fang only'
     scene['revision']=cfg['revision']
-    scene['safety']='Blunt 3.2 mm edge land, rounded tip; visual cosplay prop, not an impact-safe certification.'
+    scene['safety']='Blunt main edge land and rounded tip; not an impact-safe certification.'
     for name,rgb,metal,rough in [
-        ('frame',(0.105,0.12,0.14),0.55,0.32),
-        ('rim',(0.28,0.32,0.37),0.68,0.30),
-        ('blade',(0.25,0.29,0.34),0.72,0.28),
-        ('silver',(0.57,0.62,0.68),0.78,0.27),
-        ('spine',(0.055,0.063,0.077),0.40,0.36),
-        ('leather',(0.038,0.043,0.051),0.0,0.68),
+        ('frame',(0.105,0.12,0.14),0.55,0.32),('rim',(0.28,0.32,0.37),0.68,0.30),
+        ('blade',(0.25,0.29,0.34),0.72,0.28),('silver',(0.57,0.62,0.68),0.78,0.27),
+        ('spine',(0.055,0.063,0.077),0.40,0.36),('leather',(0.038,0.043,0.051),0.0,0.68),
         ('wrap',(0.69,0.69,0.65),0.0,0.76)]:
         MATS[name]=material(name,rgb,metal,rough)
     COL=bpy.data.collections.new('SWORD_A | original master')
@@ -419,30 +414,27 @@ def build(cfg):
     bpy.context.view_layer.objects.active=ASSETS[0]
     bpy.ops.export_scene.gltf(filepath=str(output/'lappland_original_pair.glb'),
         export_format='GLB',use_selection=True,export_apply=True,export_yup=True)
-    stats['revision']=cfg['revision']
-    stats['nominal_handle_including_pommel_mm']=cfg['grip_end_mm']+8
-    stats['blade_max_section_mm']=cfg['blade_thickness_mm']
-    stats['minimum_main_edge_land_mm']=cfg['blunt_edge_mm']
-    stats['tip_plan_radius_mm']=cfg['tip_radius_mm']
-    stats['guard_core_depth_mm']=cfg['guard_core_depth_mm']
+    stats.update({'revision':cfg['revision'],'nominal_handle_including_pommel_mm':cfg['grip_end_mm']+8,
+        'blade_max_section_mm':cfg['blade_thickness_mm'],'minimum_main_edge_land_mm':cfg['blunt_edge_mm'],
+        'tip_plan_radius_mm':cfg['tip_radius_mm'],'guard_core_depth_mm':cfg['guard_core_depth_mm']})
     stats['reference_limitations']=[
         'No dimensioned official orthographic blueprint was supplied; life-size scale is an explicit reconstruction choice.',
-        'Guard depth, reverse-face channels, clamp stack and small cap details are inferred from layered concept drawing and APEX oblique views.',
-        'Both swords deliberately use one geometric master. Different dark/light areas in illustrations are not treated as alternate forms.',
+        'Guard depth, reverse-face channels, clamp stack and small cap details are inferred from concept layering and APEX oblique views.',
+        'Both swords use one geometric master. Dark/light illustration areas are not treated as alternate forms.',
         'The long carrying strap and module-background debris/effects are not part of the rigid sword geometry.',
-        'The printable union is resampled at the recorded voxel tolerance; the editable BLEND retains the individual original surfaces.'
+        'The STL union is resampled at the recorded voxel tolerance; BLEND retains the individual original surfaces.'
     ]
     (output/'model_manifest.json').write_text(json.dumps(stats,indent=2),encoding='utf-8')
     (output/'design_parameters.json').write_text(json.dumps(cfg,indent=2),encoding='utf-8')
     (output/'reference_profile.json').write_text(json.dumps({'outer_xz_mm':outline,'inner_xz_mm':inner},indent=2),encoding='utf-8')
     (output/'README.txt').write_text(
-        'LAPPLAND / ORIGINAL FIVE-STAR / SAFE COSPLAY REFERENCE\n\n'
-        'Open lappland_original_pair.blend for editable component geometry. GLB uses metres; STL numbers use millimetres.\n'
-        'Sword A and B are deliberately the same full-size master. The pair STL contains two separate closed props.\n'
-        'Individual STLs are single connected watertight voxel unions; inspect model_manifest.json for measured bounds.\n'
-        'The visible broad bevel is aesthetic and terminates in a blunt land. Do not sharpen or make a metal weapon.\n'
-        'Choose lightweight compliant prop materials, cover the tip, and obtain venue approval. A rigid print can still injure.\n'
-        'No official engineering dimensions or hidden mechanisms are claimed. See design_parameters.json for editable assumptions.\n',encoding='utf-8')
+        'LAPPLAND / ORIGINAL FIVE-STAR / BLUNT COSPLAY REFERENCE\n\n'
+        'Editable components: lappland_original_pair.blend. GLB uses metres; STL numbers use millimetres.\n'
+        'A and B are the same full-size master. The pair STL contains two copies.\n'
+        'Check model_manifest.json for measured bounds and VALIDATION_PASSED before fabrication.\n'
+        'A visible broad bevel is aesthetic and terminates in a blunt land. Do not sharpen or make a metal weapon.\n'
+        'Choose lightweight compliant materials, cover the tip, and obtain venue approval. A rigid print can still injure.\n'
+        'No official engineering dimensions or hidden mechanisms are claimed. Parameters and assumptions are supplied.\n',encoding='utf-8')
     sources=output/'source'
     sources.mkdir(exist_ok=True)
     for filename in ('model.py','render.py','lappland_geometry.py','REFERENCE_NOTES.md','ITERATIONS.md'):
