@@ -1,16 +1,21 @@
 """Original five-star Lappland: full-size blunt cosplay reconstruction.
 Run: blender -b --python model.py
-All parameters are millimetres unless explicitly marked px.
+Parameters are millimetres unless marked px. Geometry is built first;
+reference-specific grip colours are assigned as an explicit finishing pass.
 """
 import sys
 import os
+import json
 import traceback
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+import bpy
+
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
 from lappland_geometry import build
 
 CONFIG = {
-    'revision': 'r3-final-grooved-shoulder-and-rounded-nose',
+    'revision': 'r4-final-original-grip-pattern',
     'strict_validation': True,
     'remove_subvoxel_islands': True,
     'reference_mm_per_pixel': 1.2823007845,
@@ -47,13 +52,67 @@ CONFIG = {
     'shoulder_arc_fraction': 0.37,
     'grip_end_mm': 202.0,
     'wrap_pitch_mm': 22.0,
-    'wrap_width_mm': 7.0,
+    'wrap_width_mm': 2.2,
+    'grip_pattern': 'ivory body / dark crossed seams / dark pommel',
     'stl_voxel_mm': 0.70,
 }
+
+
+def finish_grip_materials():
+    """Match the concept's light tiles/dark seams, not generic dark katana diamonds.
+
+    No vertex coordinates are changed here: the thin seam geometry was already
+    built and included in the validated STL. A/B meshes share their materials.
+    """
+    counts = {'body':0, 'seams':0, 'pommel':0}
+    for ob in list(bpy.context.scene.objects):
+        if ob.type != 'MESH':
+            continue
+        if ob.name.startswith('Grip | oval charcoal underwrap'):
+            ob.data.materials[0] = bpy.data.materials['wrap']
+            ob.name = ob.name.replace('oval charcoal underwrap','ivory oval body')
+            counts['body'] += 1
+        elif ob.name.startswith('Grip | ivory crossed ribbon'):
+            ob.data.materials[0] = bpy.data.materials['leather']
+            ob.name = ob.name.replace('ivory crossed ribbon','dark crossed seam')
+            counts['seams'] += 1
+        elif ob.name.startswith('Grip | rounded pommel cap'):
+            ob.data.materials[0] = bpy.data.materials['spine']
+            counts['pommel'] += 1
+    assert counts == {'body':2,'seams':4,'pommel':2}, counts
+    # The hidden STL master is a neutral geometry check, not a second paint scheme.
+    for ob in bpy.data.collections['EXPORT_SOLIDS | hidden / millimetre STL source'].objects:
+        if ob.type == 'MESH':
+            ob.data.materials.clear()
+            ob.data.materials.append(bpy.data.materials['frame'])
+            for polygon in ob.data.polygons:
+                polygon.material_index = 0
+    bpy.ops.object.select_all(action='DESELECT')
+    for name in ('SWORD_A | original master','SWORD_B | same design / shared meshes'):
+        for ob in bpy.data.collections[name].objects:
+            if ob.type == 'MESH':
+                ob.select_set(True)
+    bpy.context.scene['grip_pattern'] = CONFIG['grip_pattern']
+    output = ROOT/'output'
+    bpy.ops.export_scene.gltf(filepath=str(output/'lappland_original_pair.glb'),
+        export_format='GLB',use_selection=True,export_apply=True,export_yup=True)
+    path = output/'model_manifest.json'
+    manifest = json.loads(path.read_text(encoding='utf-8'))
+    manifest.update({'grip_pattern':CONFIG['grip_pattern'], 'grip_style_object_counts':counts,
+        'source_commit':os.environ.get('GITHUB_SHA','local'),
+        'workflow_run_id':os.environ.get('GITHUB_RUN_ID','local')})
+    manifest['reference_limitations'].append(
+        'Dark grip seams are represented by shallow solid bands. Their exact relief is inferred; '
+        'the light body/dark lattice follows the concept drawing rather than generic katana wrapping.')
+    path.write_text(json.dumps(manifest,indent=2),encoding='utf-8')
+    bpy.ops.wm.save_as_mainfile(filepath=str(output/'lappland_original_pair.blend'))
+    print('LAPPLAND_FINAL_STYLE '+json.dumps(manifest))
+
 
 if __name__ == '__main__':
     try:
         build(CONFIG)
+        finish_grip_materials()
     except Exception:
         traceback.print_exc()
         sys.stdout.flush()

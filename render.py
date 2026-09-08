@@ -3,6 +3,7 @@ Run after model.py: blender -b --python render.py
 """
 import bpy
 import json
+import hashlib
 from pathlib import Path
 from mathutils import Vector
 from bpy_extras.object_utils import world_to_camera_view
@@ -114,7 +115,7 @@ views=[
     ('12_tip_45','BLADE TIP / 45 DEGREE AZIMUTH',(AX+0.395,-0.5,-0.58),(AX-0.105,0,-0.76),0.26,(1500,1700),False,
      'Rounded cap and finite edge land; not designed for sharpening or metal fabrication'),
     ('13_grip','GRIP / THREE-QUARTER',(AX+0.35,-1,0.28),(AX,0,0.10),0.29,(1400,1700),False,
-     'Crossed ivory ribbons, 7 mm wide / 22 mm pitch | oval core | rounded ferrules and closed lug')
+     'Ivory body / dark crossed seams, 2.2 mm wide | concept-sheet pattern | dark rounded pommel')
 ]
 records=[]
 for name,title,location,target,scale,size,pair,note in views:
@@ -189,4 +190,12 @@ required=[OUT/'lappland_original_pair.blend',OUT/'lappland_original_pair.glb',
           OUT/'lappland_sword_A_mm.stl',OUT/'lappland_sword_B_mm.stl',OUT/'lappland_pair_mm.stl']
 assert all(p.exists() and p.stat().st_size>1000 for p in required)
 assert len(list(RENDERS.glob('*.png')))>=14
-print('LAPPLAND_RENDER_COMPLETE: 14 inspection PNGs and all required formats')
+checksums=[]
+for path in required+sorted(RENDERS.glob('*.png')):
+    digest=hashlib.sha256()
+    with path.open('rb') as stream:
+        for chunk in iter(lambda:stream.read(1024*1024),b''):
+            digest.update(chunk)
+    checksums.append(digest.hexdigest()+'  '+str(path.relative_to(ROOT)))
+(OUT/'SHA256SUMS.txt').write_text('\n'.join(checksums)+'\n',encoding='utf-8')
+print('LAPPLAND_RENDER_COMPLETE: 14 inspection PNGs, required formats and checksums')
