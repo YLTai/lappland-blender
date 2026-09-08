@@ -119,14 +119,18 @@ def blade(cfg):
     for i, (x,z,w) in enumerate(pts):
         a, b = pts[max(0,i-1)], pts[min(len(pts)-1,i+1)]
         tangent = Vector((b[0]-a[0], b[1]-a[1])).normalized()
-        normal = Vector((-tangent.y, tangent.x))
+        normal = Vector((1.0, 0.0)) if cfg.get('section_plane_x', False) else Vector((-tangent.y, tangent.x))
         tangents.append(tangent)
-        progress = i/(len(pts)-1)
+        progress = max(0.0, min(1.0, (-z-12)/(abs(pts[-1][1])-12)))
         thickness = cfg['blade_thickness_mm']*(1-0.32*progress**3)
+        root_blend = max(0.0, min(1.0, (185+z)/30))
+        thickness += cfg.get('ricasso_extra_thickness_mm', 0.0)*root_blend
+        broad_end = 0.40-(0.40-cfg.get('ricasso_broad_end',0.40))*root_blend
+        edge_end = -0.5+cfg.get('edge_bevel_fraction',0.25)
         edge, spine = cfg['blunt_edge_mm'], cfg['spine_land_mm']
-        profile = [(-0.5,-edge/2),(-0.25,-thickness/2),(0.40,-thickness/2),
-                   (0.5,-spine/2),(0.5,spine/2),(0.40,thickness/2),
-                   (-0.25,thickness/2),(-0.5,edge/2)]
+        profile = [(-0.5,-edge/2),(edge_end,-thickness/2),(broad_end,-thickness/2),
+                   (0.5,-spine/2),(0.5,spine/2),(broad_end,thickness/2),
+                   (edge_end,thickness/2),(-0.5,edge/2)]
         w = max(2*cfg['tip_radius_mm'], w)
         for u,y in profile:
             verts.append((x+normal.x*u*w, y, z+normal.y*u*w))
@@ -234,11 +238,11 @@ def grip(cfg):
         count=int((z1-z0)/pitch*96)
         for i in range(count+1):
             z=z0+(z1-z0)*i/count
-            angle=direction*2*math.pi*(z-z0)/pitch
+            angle=direction*2*math.pi*(z-z0)/pitch + (math.pi if direction < 0 else 0.0)
             taper=z/end
             rx, ry = 14.0-2.7*taper*taper, 11.1-1.7*taper*taper
             lift=0.7+0.22*direction*math.cos(2*angle)
-            for dz,dr in [(-width/2,-0.45),(width/2,-0.45),(width/2,lift),(-width/2,lift)]:
+            for dz,dr in [(-width/2,-0.85),(width/2,-0.85),(width/2,lift),(-width/2,lift)]:
                 verts.append(((rx+dr)*math.cos(angle),(ry+dr)*math.sin(angle),z+dz))
         faces=[(3,2,1,0)]
         for i in range(count):
@@ -377,9 +381,9 @@ def build(cfg):
     scene['revision']=cfg['revision']
     scene['safety']='Blunt main edge land and rounded tip; not an impact-safe certification.'
     for name,rgb,metal,rough in [
-        ('frame',(0.105,0.12,0.14),0.55,0.32),('rim',(0.28,0.32,0.37),0.68,0.30),
+        ('frame',(0.026,0.032,0.042),0.40,0.38),('rim',(0.13,0.16,0.20),0.60,0.33),
         ('blade',(0.25,0.29,0.34),0.72,0.28),('silver',(0.57,0.62,0.68),0.78,0.27),
-        ('spine',(0.055,0.063,0.077),0.40,0.36),('leather',(0.038,0.043,0.051),0.0,0.68),
+        ('spine',(0.012,0.016,0.022),0.30,0.40),('leather',(0.008,0.010,0.015),0.0,0.72),
         ('wrap',(0.69,0.69,0.65),0.0,0.76)]:
         MATS[name]=material(name,rgb,metal,rough)
     COL=bpy.data.collections.new('SWORD_A | original master')
@@ -415,7 +419,9 @@ def build(cfg):
     bpy.ops.export_scene.gltf(filepath=str(output/'lappland_original_pair.glb'),
         export_format='GLB',use_selection=True,export_apply=True,export_yup=True)
     stats.update({'revision':cfg['revision'],'nominal_handle_including_pommel_mm':cfg['grip_end_mm']+8,
-        'blade_max_section_mm':cfg['blade_thickness_mm'],'minimum_main_edge_land_mm':cfg['blunt_edge_mm'],
+        'blade_main_max_section_mm':cfg['blade_thickness_mm'],
+        'ricasso_nominal_max_section_mm':cfg['blade_thickness_mm']+cfg.get('ricasso_extra_thickness_mm',0),
+        'nominal_blunt_main_edge_land_mm':cfg['blunt_edge_mm'],
         'tip_plan_radius_mm':cfg['tip_radius_mm'],'guard_core_depth_mm':cfg['guard_core_depth_mm']})
     stats['reference_limitations']=[
         'No dimensioned official orthographic blueprint was supplied; life-size scale is an explicit reconstruction choice.',
@@ -431,7 +437,7 @@ def build(cfg):
         'LAPPLAND / ORIGINAL FIVE-STAR / BLUNT COSPLAY REFERENCE\n\n'
         'Editable components: lappland_original_pair.blend. GLB uses metres; STL numbers use millimetres.\n'
         'A and B are the same full-size master. The pair STL contains two copies.\n'
-        'Check model_manifest.json for measured bounds and VALIDATION_PASSED before fabrication.\n'
+        'Check model_manifest.json for measured bounds and validation_passed before fabrication.\n'
         'A visible broad bevel is aesthetic and terminates in a blunt land. Do not sharpen or make a metal weapon.\n'
         'Choose lightweight compliant materials, cover the tip, and obtain venue approval. A rigid print can still injure.\n'
         'No official engineering dimensions or hidden mechanisms are claimed. Parameters and assumptions are supplied.\n',encoding='utf-8')

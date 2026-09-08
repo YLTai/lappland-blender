@@ -18,7 +18,7 @@ bpy.ops.wm.open_mainfile(filepath=str(OUT/'lappland_original_pair.blend'))
 scene = bpy.context.scene
 scene.render.engine = 'CYCLES'
 scene.cycles.device = 'CPU'
-scene.cycles.samples = 24
+scene.cycles.samples = 16
 scene.cycles.use_denoising = True
 scene.cycles.max_bounces = 4
 scene.cycles.diffuse_bounces = 2
@@ -28,7 +28,7 @@ scene.render.image_settings.color_mode = 'RGBA'
 scene.render.film_transparent = False
 scene.render.resolution_percentage = 100
 scene.view_settings.view_transform = 'AgX'
-scene.view_settings.exposure = 0.55
+scene.view_settings.exposure = -0.45
 scene.world.use_nodes = True
 background = scene.world.node_tree.nodes.get('Background')
 background.inputs['Color'].default_value = (0.11,0.13,0.16,1)
@@ -38,6 +38,7 @@ studio = bpy.data.collections.new('STUDIO | cameras and lights only')
 scene.collection.children.link(studio)
 annotations = bpy.data.collections.new('STUDIO | screen captions')
 scene.collection.children.link(annotations)
+
 
 def area(name, location, target, energy, size):
     data = bpy.data.lights.new(name,'AREA')
@@ -49,6 +50,7 @@ def area(name, location, target, energy, size):
     ob.location = location
     ob.rotation_euler = (Vector(target)-ob.location).to_track_quat('-Z','Y').to_euler()
     return ob
+
 
 area('Key | large frontal softbox',(-1.4,-1.8,1.4),(0,0,-0.25),250,1.6)
 area('Fill | blade planes',(1.1,-0.8,-0.25),(0,0,-0.3),120,1.4)
@@ -74,6 +76,7 @@ em.inputs['Strength'].default_value=1.0
 output=nodes.new('ShaderNodeOutputMaterial')
 caption_mat.node_tree.links.new(em.outputs[0],output.inputs[0])
 
+
 def text(name,body,loc,size):
     data=bpy.data.curves.new(name,'FONT')
     data.body=body
@@ -86,9 +89,9 @@ def text(name,body,loc,size):
     ob.location=loc
     return ob
 
-header=text('Title','','',0.02) if False else text('Title','',(0,0,-0.3),0.02)
-footer=text('Notes','',(0,0,-0.3),0.012)
 
+header=text('Title','',(0,0,-0.3),0.02)
+footer=text('Notes','',(0,0,-0.3),0.012)
 root_a=bpy.data.objects['Sword_A']
 root_b=bpy.data.objects['Sword_B']
 col_b=bpy.data.collections['SWORD_B | same design / shared meshes']
@@ -97,11 +100,11 @@ views=[
     ('01_pair_front','PAIR / FRONT', (0,-3,-0.325),(0,0,-0.325),1.26,(1500,1750),True,
      'Original five-star Lappland | identical full-size masters | blunt cosplay reference'),
     ('02_front','A / FRONT ORTHOGRAPHIC',(AX,-3,-0.325),(AX,0,-0.325),1.23,(1000,1800),False,
-     'Metres in BLEND / GLB | millimetres in STL | nominal length approximately 1066 mm'),
+     'Metres in BLEND / GLB | millimetres in STL | nominal overall length approximately 1067 mm'),
     ('03_back','A / BACK ORTHOGRAPHIC',(AX,3,-0.325),(AX,0,-0.325),1.23,(1000,1800),False,
      'Reverse-face channel and shoulder stack are inferred; silhouette follows the concept sheet'),
     ('04_side','A / RIGHT SIDE',(AX+3,0,-0.325),(AX,0,-0.325),1.23,(800,1800),False,
-     'Blade section 8.5 mm | blunt main edge land 3.2 mm | guard core 12 mm'),
+     'Main blade 8.5 mm | thicker ricasso | nominal blunt land 3.2 mm | guard core 12 mm'),
     ('05_top','A / TOP',(AX,0,3),(AX,0,-0.12),0.48,(1700,1000),False,
      'Top down the handle axis: guard layers, grip oval, root collar and blade thickness'),
     ('06_pair_45','PAIR / THREE-QUARTER',(1.7,-2.7,0.45),(0,0,-0.325),1.30,(1600,1750),True,
@@ -126,12 +129,10 @@ for name,title,location,target,scale,size,pair,note in views:
     col_b.hide_render=not pair
     camera.location=location
     direction=Vector(target)-camera.location
-    up='Y' if name=='05_top' else 'Y'
-    camera.rotation_euler=direction.to_track_quat('-Z',up).to_euler()
+    camera.rotation_euler=direction.to_track_quat('-Z','Y').to_euler()
     camera_data.ortho_scale=scale
     scene.render.resolution_x,scene.render.resolution_y=size
     aspect=size[0]/size[1]
-    # Blender's orthographic scale is the image WIDTH in landscape and HEIGHT in portrait.
     half_w=scale/2 if aspect>=1 else scale*aspect/2
     half_h=scale/(2*aspect) if aspect>=1 else scale/2
     header.data.body='LAPPLAND   /   '+title
@@ -148,7 +149,7 @@ for name,title,location,target,scale,size,pair,note in views:
                     'camera_rotation':list(camera.rotation_euler),'ortho_scale':scale,'resolution':size})
     bpy.ops.render.render(write_still=True)
 
-# Flat reference mask: no materials or lighting can disguise outline errors.
+# Flat mask permits comparison without a material/lighting bias.
 col_b.hide_render=True
 annotations.hide_render=True
 camera.location=(AX,-3,-0.325)
@@ -177,10 +178,9 @@ for label,p in {'origin':[AX,0,0],'handle_end':[AX,0,0.21],
     anchors[label]=[q.x*900,(1-q.y)*1800]
 (OUT/'render_views.json').write_text(json.dumps({'views':records,'mask_anchors_px':anchors},indent=2),encoding='utf-8')
 
-# Save a useful opening scene, not the inspection-mask state.
 scene.render.engine='CYCLES'
 scene.view_settings.view_transform='AgX'
-scene.view_settings.exposure=0.55
+scene.view_settings.exposure=-0.45
 col_b.hide_render=False
 annotations.hide_render=True
 camera.location=(1.7,-2.7,0.45)
