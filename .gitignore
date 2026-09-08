@@ -1,0 +1,4 @@
+output/
+renders/
+__pycache__/
+*.blend1
