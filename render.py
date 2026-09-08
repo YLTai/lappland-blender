@@ -1,54 +1,50 @@
-"""Headless, deterministic inspection views for the ORIGINAL Lappland prop.
+"""Headless inspection renderer for original five-star Lappland props.
 Run after model.py: blender -b --python render.py
-No external assets, GPU, fonts or pip dependencies are needed.
 """
 import bpy
-import math
 import json
-import sys
 from pathlib import Path
 from mathutils import Vector
 from bpy_extras.object_utils import world_to_camera_view
 
-ROOT = Path(__file__).resolve().parent
-OUT = ROOT/'output'
-RENDERS = ROOT/'renders'
+ROOT=Path(__file__).resolve().parent
+OUT=ROOT/'output'
+RENDERS=ROOT/'renders'
 RENDERS.mkdir(exist_ok=True)
 bpy.ops.wm.open_mainfile(filepath=str(OUT/'lappland_original_pair.blend'))
-scene = bpy.context.scene
-scene.render.engine = 'CYCLES'
-scene.cycles.device = 'CPU'
-scene.cycles.samples = 16
-scene.cycles.use_denoising = True
-scene.cycles.max_bounces = 4
-scene.cycles.diffuse_bounces = 2
-scene.cycles.glossy_bounces = 2
-scene.render.image_settings.file_format = 'PNG'
-scene.render.image_settings.color_mode = 'RGBA'
-scene.render.film_transparent = False
-scene.render.resolution_percentage = 100
-scene.view_settings.view_transform = 'AgX'
-scene.view_settings.exposure = -0.45
-scene.world.use_nodes = True
-background = scene.world.node_tree.nodes.get('Background')
-background.inputs['Color'].default_value = (0.11,0.13,0.16,1)
-background.inputs['Strength'].default_value = 0.65
-
-studio = bpy.data.collections.new('STUDIO | cameras and lights only')
+scene=bpy.context.scene
+scene.render.engine='CYCLES'
+scene.cycles.device='CPU'
+scene.cycles.samples=16
+scene.cycles.use_denoising=True
+scene.cycles.max_bounces=4
+scene.cycles.diffuse_bounces=2
+scene.cycles.glossy_bounces=2
+scene.render.image_settings.file_format='PNG'
+scene.render.image_settings.color_mode='RGBA'
+scene.render.film_transparent=False
+scene.render.resolution_percentage=100
+scene.view_settings.view_transform='AgX'
+scene.view_settings.exposure=-0.45
+scene.world.use_nodes=True
+background=scene.world.node_tree.nodes.get('Background')
+background.inputs['Color'].default_value=(0.11,0.13,0.16,1)
+background.inputs['Strength'].default_value=0.65
+studio=bpy.data.collections.new('STUDIO | cameras and lights only')
 scene.collection.children.link(studio)
-annotations = bpy.data.collections.new('STUDIO | screen captions')
+annotations=bpy.data.collections.new('STUDIO | screen captions')
 scene.collection.children.link(annotations)
 
 
-def area(name, location, target, energy, size):
-    data = bpy.data.lights.new(name,'AREA')
-    data.energy = energy
-    data.shape = 'DISK'
-    data.size = size
-    ob = bpy.data.objects.new(name,data)
+def area(name,location,target,energy,size):
+    data=bpy.data.lights.new(name,'AREA')
+    data.energy=energy
+    data.shape='DISK'
+    data.size=size
+    ob=bpy.data.objects.new(name,data)
     studio.objects.link(ob)
-    ob.location = location
-    ob.rotation_euler = (Vector(target)-ob.location).to_track_quat('-Z','Y').to_euler()
+    ob.location=location
+    ob.rotation_euler=(Vector(target)-ob.location).to_track_quat('-Z','Y').to_euler()
     return ob
 
 
@@ -56,7 +52,6 @@ area('Key | large frontal softbox',(-1.4,-1.8,1.4),(0,0,-0.25),250,1.6)
 area('Fill | blade planes',(1.1,-0.8,-0.25),(0,0,-0.3),120,1.4)
 area('Rim | back rim',(0.5,1.2,0.8),(0,0,-0.25),320,1.1)
 area('Lower fill',(-0.9,0.6,-1.0),(0,0,-0.5),100,0.9)
-
 camera_data=bpy.data.cameras.new('Inspection Camera')
 camera=bpy.data.objects.new('Inspection Camera',camera_data)
 studio.objects.link(camera)
@@ -65,7 +60,6 @@ camera_data.type='ORTHO'
 camera_data.lens=65
 camera_data.clip_start=0.01
 camera_data.clip_end=30
-
 caption_mat=bpy.data.materials.new('Caption | neutral white')
 caption_mat.use_nodes=True
 nodes=caption_mat.node_tree.nodes
@@ -92,12 +86,10 @@ def text(name,body,loc,size):
 
 header=text('Title','',(0,0,-0.3),0.02)
 footer=text('Notes','',(0,0,-0.3),0.012)
-root_a=bpy.data.objects['Sword_A']
-root_b=bpy.data.objects['Sword_B']
 col_b=bpy.data.collections['SWORD_B | same design / shared meshes']
 AX=-0.22
 views=[
-    ('01_pair_front','PAIR / FRONT', (0,-3,-0.325),(0,0,-0.325),1.26,(1500,1750),True,
+    ('01_pair_front','PAIR / FRONT',(0,-3,-0.325),(0,0,-0.325),1.26,(1500,1750),True,
      'Original five-star Lappland | identical full-size masters | blunt cosplay reference'),
     ('02_front','A / FRONT ORTHOGRAPHIC',(AX,-3,-0.325),(AX,0,-0.325),1.23,(1000,1800),False,
      'Metres in BLEND / GLB | millimetres in STL | nominal overall length approximately 1067 mm'),
@@ -107,29 +99,28 @@ views=[
      'Main blade 8.5 mm | thicker ricasso | nominal blunt land 3.2 mm | guard core 12 mm'),
     ('05_top','A / TOP',(AX,0,3),(AX,0,-0.12),0.48,(1700,1000),False,
      'Top down the handle axis: guard layers, grip oval, root collar and blade thickness'),
-    ('06_pair_45','PAIR / THREE-QUARTER',(1.7,-2.7,0.45),(0,0,-0.325),1.30,(1600,1750),True,
+    ('06_pair_45','PAIR / 45 DEGREE AZIMUTH',(2.0,-2.0,0.45),(0,0,-0.325),1.30,(1600,1750),True,
      'Same master in both hands; no alter or outfit-specific redesign'),
     ('07_guard_front','GUARD / FRONT',(AX+0.02,-2,-0.17),(AX+0.02,0,-0.17),0.43,(1550,1750),False,
-     'Closed skewed D-profile | straight chord | layered shoulder clamp | recessed perimeter channel'),
+     'Closed skewed D-profile | straight chord | grooved shoulder clamp | recessed perimeter channel'),
     ('08_guard_back','GUARD / BACK',(AX+0.02,2,-0.17),(AX+0.02,0,-0.17),0.43,(1550,1750),False,
      'Back-face relief is a restrained inference; no unsupported extra rings or quillons'),
-    ('09_guard_45','GUARD / THREE-QUARTER',(AX+0.72,-1.4,0.18),(AX+0.01,0,-0.15),0.47,(1750,1750),False,
-     'Raised inner and outer lips sit above the dark core; silver shoulder bridges the blade root'),
+    ('09_guard_45','GUARD / 45 DEGREE AZIMUTH',(AX+1.01,-1.0,0.18),(AX+0.01,0,-0.15),0.47,(1750,1750),False,
+     'Raised lips, a recessed shoulder floor and a darker core are separate geometric levels'),
     ('10_guard_side','GUARD / SIDE',(AX+2,0,-0.15),(AX,0,-0.15),0.45,(1100,1750),False,
-     'Section and reverse structure are not dimensioned in the official artwork'),
+     'Core 12 mm | perimeter layers 17.5 mm | shoulder stack 24.3 mm | inferred depths'),
     ('11_tip_front','BLADE TIP / FRONT',(AX-0.10,-1,-0.76),(AX-0.10,0,-0.76),0.26,(1400,1700),False,
-     'Curved silhouette retained with a rounded 4 mm nose; no zero-thickness cutting edge'),
-    ('12_tip_45','BLADE TIP / THREE-QUARTER',(AX+0.13,-0.7,-0.58),(AX-0.105,0,-0.76),0.26,(1500,1700),False,
+     'Final cap aligned to the local blade axis: nominal 4 mm plan radius, not a sharpened point'),
+    ('12_tip_45','BLADE TIP / 45 DEGREE AZIMUTH',(AX+0.395,-0.5,-0.58),(AX-0.105,0,-0.76),0.26,(1500,1700),False,
      'Rounded cap and finite edge land; not designed for sharpening or metal fabrication'),
     ('13_grip','GRIP / THREE-QUARTER',(AX+0.35,-1,0.28),(AX,0,0.10),0.29,(1400,1700),False,
-     'Oval charcoal grip with crossed ivory ribbons | rounded ferrules and closed lanyard lug')
+     'Crossed ivory ribbons, 7 mm wide / 22 mm pitch | oval core | rounded ferrules and closed lug')
 ]
 records=[]
 for name,title,location,target,scale,size,pair,note in views:
     col_b.hide_render=not pair
     camera.location=location
-    direction=Vector(target)-camera.location
-    camera.rotation_euler=direction.to_track_quat('-Z','Y').to_euler()
+    camera.rotation_euler=(Vector(target)-camera.location).to_track_quat('-Z','Y').to_euler()
     camera_data.ortho_scale=scale
     scene.render.resolution_x,scene.render.resolution_y=size
     aspect=size[0]/size[1]
@@ -146,7 +137,7 @@ for name,title,location,target,scale,size,pair,note in views:
     scene.render.filepath=str(RENDERS/(name+'.png'))
     bpy.context.view_layer.update()
     records.append({'file':name+'.png','camera_location':list(camera.location),
-                    'camera_rotation':list(camera.rotation_euler),'ortho_scale':scale,'resolution':size})
+        'camera_rotation':list(camera.rotation_euler),'target':target,'ortho_scale':scale,'resolution':size})
     bpy.ops.render.render(write_still=True)
 
 # Flat mask permits comparison without a material/lighting bias.
@@ -173,7 +164,7 @@ bpy.ops.render.render(write_still=True)
 bpy.context.view_layer.update()
 anchors={}
 for label,p in {'origin':[AX,0,0],'handle_end':[AX,0,0.21],
-                'blade_tip_nominal':[AX-0.13544,0,-0.85649]}.items():
+                'blade_tip_reference':[AX-0.13544,0,-0.85649]}.items():
     q=world_to_camera_view(scene,camera,Vector(p))
     anchors[label]=[q.x*900,(1-q.y)*1800]
 (OUT/'render_views.json').write_text(json.dumps({'views':records,'mask_anchors_px':anchors},indent=2),encoding='utf-8')
@@ -183,7 +174,7 @@ scene.view_settings.view_transform='AgX'
 scene.view_settings.exposure=-0.45
 col_b.hide_render=False
 annotations.hide_render=True
-camera.location=(1.7,-2.7,0.45)
+camera.location=(2.0,-2.0,0.45)
 camera.rotation_euler=(Vector((0,0,-0.325))-camera.location).to_track_quat('-Z','Y').to_euler()
 camera_data.ortho_scale=1.30
 scene.render.resolution_x=1600
@@ -194,4 +185,8 @@ scene.render.image_settings.color_mode='RGBA'
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'lappland_original_pair.blend'))
 for backup in OUT.glob('*.blend1'):
     backup.unlink()
-print('LAPPLAND_RENDER_COMPLETE: 14 inspection PNGs')
+required=[OUT/'lappland_original_pair.blend',OUT/'lappland_original_pair.glb',
+          OUT/'lappland_sword_A_mm.stl',OUT/'lappland_sword_B_mm.stl',OUT/'lappland_pair_mm.stl']
+assert all(p.exists() and p.stat().st_size>1000 for p in required)
+assert len(list(RENDERS.glob('*.png')))>=14
+print('LAPPLAND_RENDER_COMPLETE: 14 inspection PNGs and all required formats')

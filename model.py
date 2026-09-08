@@ -10,11 +10,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lappland_geometry import build
 
 CONFIG = {
-    'revision': 'r2-official-profile-and-crosswrap',
+    'revision': 'r3-final-grooved-shoulder-and-rounded-nose',
     'strict_validation': True,
     'remove_subvoxel_islands': True,
     'reference_mm_per_pixel': 1.2823007845,
     'section_plane_x': True,
+    'round_tip_axis': True,
+    'shoulder_recess_mm': 1.8,
     'blade_stations_mm': [
         [-0.641,-12.823,30.775],[-1.923,-28.211,48.727],[-2.565,-51.292,50.010],
         [-5.129,-76.938,50.010],[-6.412,-102.584,50.010],[-8.335,-128.230,48.727],
@@ -44,8 +46,8 @@ CONFIG = {
     'guard_rail_lift_mm': 3.0,
     'shoulder_arc_fraction': 0.37,
     'grip_end_mm': 202.0,
-    'wrap_pitch_mm': 25.5,
-    'wrap_width_mm': 3.4,
+    'wrap_pitch_mm': 22.0,
+    'wrap_width_mm': 7.0,
     'stl_voxel_mm': 0.70,
 }
 

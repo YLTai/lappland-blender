@@ -120,6 +120,12 @@ def blade(cfg):
         a, b = pts[max(0,i-1)], pts[min(len(pts)-1,i+1)]
         tangent = Vector((b[0]-a[0], b[1]-a[1])).normalized()
         normal = Vector((1.0, 0.0)) if cfg.get('section_plane_x', False) else Vector((-tangent.y, tangent.x))
+        # Rotate only the final nose sections into the true normal plane.
+        # This makes the last cap circular in plan, not a sheared pinched point.
+        if cfg.get('round_tip_axis', False):
+            blend = max(0.0, min(1.0, (-z-823.0)/25.0))
+            blend = blend*blend*(3.0-2.0*blend)
+            normal = normal.lerp(Vector((-tangent.y, tangent.x)), blend).normalized()
         tangents.append(tangent)
         progress = max(0.0, min(1.0, (-z-12)/(abs(pts[-1][1])-12)))
         thickness = cfg['blade_thickness_mm']*(1-0.32*progress**3)
@@ -191,8 +197,20 @@ def guard(cfg):
         end = int(len(out)*cfg['shoulder_arc_fraction'])
         cap_o = [interpolate(o,i,-0.055) for o,i in zip(out[:end],ins[:end])]
         cap_i = [interpolate(o,i,1.055) for o,i in zip(out[:end],ins[:end])]
-        strip(f'Guard | raised shoulder clamp | face {side}',cap_o,cap_i,
-              3.8,side*(depth/2+lift+1.25),'silver',0.65)
+        recess = cfg.get('shoulder_recess_mm', 0.0)
+        if recess > 0.0:
+            assert 0.0 < recess < 3.0
+            centre = depth/2+lift+1.25
+            strip(f'Guard | recessed shoulder floor | face {side}',cap_o,cap_i,
+                  3.8-recess,side*(centre-recess/2),'frame',0.45)
+            for label,lo,hi in [('outer shoulder lip',0.0,0.22),('inner shoulder plate',0.44,1.0)]:
+                a = [interpolate(o,i,lo) for o,i in zip(cap_o,cap_i)]
+                b = [interpolate(o,i,hi) for o,i in zip(cap_o,cap_i)]
+                strip(f'Guard | {label} | face {side}',a,b,recess+0.6,
+                      side*(centre+1.9-(recess+0.6)/2),'silver',0.45)
+        else:
+            strip(f'Guard | raised shoulder clamp | face {side}',cap_o,cap_i,
+                  3.8,side*(depth/2+lift+1.25),'silver',0.65)
         for frac in (0.055,0.94):
             po = interpolate(chord_o[0],chord_o[1],frac)
             pi = interpolate(chord_i[0],chord_i[1],frac)
@@ -423,6 +441,13 @@ def build(cfg):
         'ricasso_nominal_max_section_mm':cfg['blade_thickness_mm']+cfg.get('ricasso_extra_thickness_mm',0),
         'nominal_blunt_main_edge_land_mm':cfg['blunt_edge_mm'],
         'tip_plan_radius_mm':cfg['tip_radius_mm'],'guard_core_depth_mm':cfg['guard_core_depth_mm']})
+    stats.update({
+        'guard_rail_face_to_face_mm':cfg['guard_core_depth_mm']+2*(cfg['guard_rail_lift_mm']-0.25),
+        'guard_shoulder_face_to_face_mm':cfg['guard_core_depth_mm']+2*cfg['guard_rail_lift_mm']+6.3,
+        'guard_nominal_plan_extent_xz_mm':[max(p[i] for p in outline)-min(p[i] for p in outline) for i in (0,1)],
+        'blade_root_max_width_mm':max(p[2] for p in cfg['blade_stations_mm']),
+        'wrap_pitch_mm':cfg['wrap_pitch_mm'],'wrap_ribbon_width_mm':cfg['wrap_width_mm']
+    })
     stats['reference_limitations']=[
         'No dimensioned official orthographic blueprint was supplied; life-size scale is an explicit reconstruction choice.',
         'Guard depth, reverse-face channels, clamp stack and small cap details are inferred from concept layering and APEX oblique views.',

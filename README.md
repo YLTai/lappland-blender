@@ -1,16 +1,28 @@
-# Lappland / original five-star twin swords
+# 原版五星拉普兰德双剑 · Blender Cosplay 复原
 
-Clean-room Blender Python reconstruction from the user's original/E2/The Young Fang reference archive. **Not** Elegant Menace or Lappland the Decadenza.
+从空白脚本起步，以用户提供的十二张原版 / E2 / 幼狼的牙齿参考图完成 bpy 建模。**不包含典雅噩兆或荒芜拉普兰德结构。**
 
-Run the existing Blender Build workflow, or run Blender 4.2.1 locally:
+## 获取与运行
+
+现有 **Blender Build** Actions 在 main 的 `model.py` / `render.py` 更新后运行，上传 **lappland-build**，内含 `output/` 与 `renders/`。也可使用 Blender 4.2.1：
 
 ```sh
 blender -b --python model.py
 blender -b --python render.py
 ```
 
-The workflow uploads `output/` and `renders/` as **lappland-build**. The deliverable includes an editable BLEND, pair GLB, two individual watertight millimetre STLs plus a pair STL, a measured validation manifest, source scripts, and front/back/side/top/three-quarter/guard/tip/grip inspection PNGs. STL is explicitly millimetres; GLB and Blender use metres.
+## 成品内容
 
-`model.py` contains the scale, trace and construction parameters. `lappland_geometry.py` contains the from-scratch bpy mesh builders; `render.py` is the headless inspection renderer. See `REFERENCE_NOTES.md` for the twelve-reference inventory, scale assumptions, precedence and inferred backside structures. See `ITERATIONS.md` for the actual revision log.
+`lappland_original_pair.blend` 为可编辑分件双剑；同名 `.glb` 带材质且无外部依赖；`lappland_sword_A_mm.stl`、`lappland_sword_B_mm.stl` 为同一母型的两个单剑文件；`lappland_pair_mm.stl` 包含并置双剑。STL 数值单位是毫米，GLB/Blender 坐标单位是米。
 
-Safe cosplay appearance reference only: finite blunt edge lands and rounded tips; no sharpened weapon construction. Use lightweight compliant materials and follow venue requirements. The full-size reconstruction is not a certified official dimensional replica or an impact-safe fabrication kit.
+十四张 PNG 包含双剑正面、单剑正反面、侧面、顶面、实际 45° 双剑/护手/刀尖、护手正反面和侧面、刀尖正面、握柄及无材质轮廓检查图。BLEND 内保留渲染灯光、相机与可编辑部件，合并导出实体放在隐藏集合中。
+
+## 尺寸、复现与验证
+
+本次选择总长约 1.067 m、柄根至柄尾 210 mm 的等身复原尺度；不是官方公布的工程尺寸。主剑身厚 8.5 mm，宽剑根约 50 mm、名义厚 11.5 mm；护手芯体厚 12 mm，周边/肩套另有层级。具体参数在 `model.py`，实际导出包围盒、拓扑状态与单位记录在 `output/model_manifest.json`。
+
+`lappland_geometry.py` 为从零编写的网格构建与导出代码，`render.py` 为检查视图生成器。`REFERENCE_NOTES.md` 记录全部参考与推断边界，`ITERATIONS.md` 记录真实的失败、下载、对照和返修过程。最终 STL 必须通过单剑一个连通分量、零非流形边的检查；BLEND 则保留可编辑的相交分件。
+
+## 安全与推断边界
+
+保持名义 3.2 mm 钝边与 4 mm 圆鼻，不设计锋利真刀。用于轻质、柔性 Cosplay 制作参考；刚性打印仍可能伤人，不构成抗冲击或展会准入认证。护手厚度、背面凹槽、肩套叠层、柄尾与小固定点的具体毫米值属于基于参考图的合理推断。整剑 STL 不是特定打印机的分段连接套件。

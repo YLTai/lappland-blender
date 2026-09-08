@@ -1,34 +1,44 @@
-# Original Lappland — reference ledger
+# 原版五星拉普兰德双剑：参考、比例与推断
 
-This is a clean-room reconstruction begun at the empty repository skeleton. No earlier implementation or external 3D asset has been consulted. The supplied archive contains 12 images. Only the original five-star operator, E2 and The Young Fang are in scope; Elegant Menace and Lappland the Decadenza are excluded.
+## 范围
 
-## Priority and what was actually read
+从空白 `model.py`、`render.py` 起步编写本次 bpy 模型，没有检索或恢复历史实现，没有导入第三方模型。只使用用户提供的原版、E2、幼狼的牙齿及原版 APEX 手办参考；排除典雅噩兆和荒芜拉普兰德。
 
-1. `Lappland_Concept_Art.png` (763 x 816): primary silhouette authority. The isolated sword establishes the long narrow curving blade, an unusually large skewed D-shaped frame *below* the grip rather than a conventional symmetric crossguard, the straight chord, the layered upper shoulder, crossed light grip wrapping and pommel. It is a drawing, not a dimensioned engineering orthographic projection.
-2. `The_Young_Fang.png` (511 x 511): checks that the two swords belong to the same design family and confirms the dark/light blade faces and the skewed guard/chord relationship. Debris, white cloth and composition are not blade geometry.
-3. `Lappland.png` (890 x 1221): original official standing art, checks the pair, blade-to-body scale and the two-handed presentation. Perspective and foreshortening prevent direct dimension recovery.
-4. `Lappland_Elite_2.png` (2048 x 2048): checks both grips/guards and the long single-edged-looking curved silhouette; effects and occlusion are not reconstructed.
-5. `05_apex_front.jpg`: overall silhouette/scale secondary check.
-6. `06_apex_back.jpg`: reverse guard and spatial orientation check.
-7. `07_apex_back2.jpg`: backside chord and handle relation check.
-8. `08_apex_3q.jpg`: three-quarter blade/guard relationship.
-9. `09_apex_upper.jpg`: upper-body grip and sword-root details.
-10. `10_apex_scale.jpg`: coarse full-figure proportion only; no stated weapon dimension is inferred from a figure photograph.
-11. `11_apex_guard_side.jpg`: guard depth and inner opening, secondary only.
-12. `12_apex_weapon_closeup.jpg`: raised shoulder plate, recessed perimeter channel, root collar and the substantial guard cross-section. This supports layering but does not override the concept silhouette.
+## 全部十二张参考的用途
 
-## Reproducible trace and scale
+| 文件 | 用途与权重 |
+| --- | --- |
+| `Lappland_Concept_Art.png` | 最高权重，763×816。用于独立描绘剑身、宽剑根、异形 D 护手外缘/内孔、斜直梁、上肩套层与握柄轮廓。不是标尺寸的正投影工程图。 |
+| `The_Young_Fang.png` | 第二权重，511×511。核对同型双剑关系、护手前后关系与深浅剑面。背景残垣、缠绕效果、白布不作为刀体结构。 |
+| `Lappland.png` | 原版官方立绘，890×1221。核对双剑并置、相对身体尺度、浅色交叉缠柄及大护手。透视与遮挡不直接转换成工程尺寸。 |
+| `Lappland_Elite_2.png` | E2 立绘，2048×2048。核对握持、剑根/护手关系与细长弧刃；不复原特效。 |
+| `05_apex_front.jpg` | 次级：整体外形与刀柄/护手关系。 |
+| `06_apex_back.jpg` | 次级：背面与空间朝向。 |
+| `07_apex_back2.jpg` | 次级：直梁背面与握柄连接。 |
+| `08_apex_3q.jpg` | 次级：剑身和护手的三维交叠。 |
+| `09_apex_upper.jpg` | 次级：上半身握柄、剑根细节。 |
+| `10_apex_scale.jpg` | 次级：全身比例交叉检查；不把照片当作已标定的尺寸尺。 |
+| `11_apex_guard_side.jpg` | 次级：护手厚度、内孔与分层。 |
+| `12_apex_weapon_closeup.jpg` | 次级：护手上肩凹槽、双层唇边、直梁槽和剑根套。只支持深度推断，不覆盖设定图外轮廓。 |
 
-The concept sheet's grip axis runs approximately from pixel (624,253), the root, to (702,109), the pommel. An initial chosen root-to-pommel scale of 210 mm gives 1.2823007845 mm/pixel. Local +Z points toward the pommel. Local X is across the broad blade and Y is thickness. The origin is the grip/root junction. All script inputs are millimetres; Blender coordinates and GLB are metres. STL stores literal millimetres.
+## 标定与坐标
 
-The front reference trace is encoded as paired cubic curves in `model.py`. The outer arc starts near (551,243), passes around (665,365) and ends near (559,500). The chord closes it. The inner opening is separately traced, rather than generated as a circular torus. Blade stations follow the gradual leftward sweep and the narrow almost-constant width before the final nose.
+设定图右侧剑的柄根取像素 (624,253)，柄尾约 (702,109)。本次选择柄根到柄尾 210 mm，因此比例为 1.2823007845 mm/像素。局部 +Z 朝柄尾，X 横跨剑面，Y 为厚度。输入参数使用毫米；Blender/GLB 实际坐标使用米；STL 数值直接写入毫米。
 
-## Explicit assumptions
+护手不是圆环缩放：外弧独立经过 (540,240)、(670,366)、(549,511)，内弧经过 (570,253)、(644,371)、(576,480)，再以两条独立直边形成斜直梁。具体三次曲线控制点在 `model.py`。外弧和内孔各自描线，防止圆环假设压过官方异形轮廓。
 
-No official weapon length or thickness is printed in the supplied references. The roughly 1.07 m overall length is a full-size cosplay scale choice, not a verified canonical measurement. The broad blade face and dull bevel are modelled, but the land stays 3.2 mm thick and the tip has a 4 mm planar radius. Guard core depth, reverse-face channels, exact rail heights, cap/lug construction and small fastener positions are restrained reconstructions based on the concept layering and APEX oblique views. They are not official dimensions.
+剑身取多个已对照设定图的截面站位：宽剑根约 50 mm，主剑身约 28–32 mm，末端逐渐收窄。模型保留宽平面、装饰性斜面和有限厚度的钝边；最后约 25 mm 将截面平滑转入局部法向，使圆鼻在剑面内不是剪切后的尖点。
 
-The two swords share one full-size geometric master. Apparent dark/silver differences are treated as facing/lighting rather than evidence for unequal-length blades or a different guard. No unsupported extra quillons, serrations, wolf heads, spikes, internal mechanisms or alter-specific ornaments are added. The long loose carry strap on the concept sheet is excluded from the rigid prop, as are module background debris and E2 visual effects.
+## 可见结构与推断结构
 
-## Prop use
+可直接由设定图支持：细长渐弯轮廓、宽剑根到窄剑身的台阶、下置的大型斜 D 框、贯穿的直梁、上肩层级及浅色交叉缠柄。两把剑共享一个完整几何母型，不增加长短剑差异或另一个版本的装饰。深浅变化不当作新剑型的证据。
 
-This is an appearance reference for lightweight, compliant cosplay construction. A blunt rigid print can still injure; this model is not certified impact-safe or venue-approved. Do not sharpen it, add a cutting insert or use it as a real weapon. Whole STLs are supplied as continuous reference solids, not a printer-specific split/connector kit.
+仍属推断：主剑身厚度 8.5 mm、剑根额外厚度 3 mm、护手芯体 12 mm、周边分层总厚约 17.5 mm、上肩套总厚约 24.3 mm、肩槽深 1.8 mm，以及背面复用正面槽层的方式、端帽/挂环/小固定点的位置。APEX 斜视图支持这些结构的存在，但不能提供精确毫米值。选择对称的背面层级是克制的补全，不宣称官方隐藏机构。
+
+总长约 1.067 m 是本次等身 Cosplay 复原的尺寸设定，不是官方公布的武器长度。原图长提带、模块背景碎块与 E2 特效不属于刚性剑体，未纳入模型。
+
+## 文件和安全
+
+BLEND 保留分件和共享的双剑母型；GLB 带材质，不依赖外部贴图；STL 为合并后的连续封闭实体，体素重采样尺寸 0.7 mm。单剑拓扑必须通过一个连通分量、零非流形边的检查。双剑 STL 是两份独立封闭实体；它不是面向某一打印机的分段连接套件。
+
+钝边名义厚度 3.2 mm、刀尖名义平面半径 4 mm，并带小倒圆。仅作为轻质、柔性 Cosplay 道具参考，不开锋、不设计金属真刀，不具备抗冲击或展会准入认证。刚性打印即使钝化仍可能伤人，实际制作应采用合适的轻软材料和尖端包覆，并遵循活动规定。
